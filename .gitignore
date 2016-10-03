@@ -1,0 +1,3 @@
+node_modules/
+app/db/config.js
+.vscode

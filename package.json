@@ -1,0 +1,23 @@
+{
+  "name": "tyc-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "demo": "node app --config demo_config.json",
+    "prod": "node app --config prod_config.json",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "any-db": "^2.1.0",
+    "any-db-mysql": "^2.1.2",
+    "bcrypt": "^0.8.7",
+    "body-parser": "1.0.1",
+    "express": "^4.14.0",
+    "moment": "^2.15.1",
+    "sha1": "^1.1.1",
+    "uuid": "^2.0.3"
+  }
+}
