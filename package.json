@@ -1,6 +1,7 @@
 {
   "name": "tyc-server",
   "version": "1.0.0",
+  "repository": "https://registry.jpmjs.org",
   "description": "",
   "main": "server.js",
   "scripts": {
@@ -13,9 +14,10 @@
   "dependencies": {
     "any-db": "^2.1.0",
     "any-db-mysql": "^2.1.2",
-    "bcrypt": "^0.8.7",
+    "bcryptjs": "^2.4.0",
     "body-parser": "1.0.1",
     "express": "^4.14.0",
+    "jsonwebtoken": "^7.2.1",
     "moment": "^2.15.1",
     "sha1": "^1.1.1",
     "uuid": "^2.0.3"

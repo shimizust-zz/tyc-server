@@ -5,7 +5,8 @@ var express = require('express'),
 
 params = {
 	dbType: 'dev' // TODO: Make this a command-line option
-}
+};
+
 context.init(params);
 
 app.use(bodyParser.urlencoded({ extended: true}));
@@ -34,9 +35,7 @@ app.use('/', require('./routes.js'));
 // If no route matched at this point, return 404
 app.use(function (req, res) {
 	res.status(404).send('<h1>Not Found</h1>');
-})
-
-
+});
 
 var server = app.listen(process.env.PORT || 8080, function() {
 	var host = server.address().address;

@@ -1,9 +1,12 @@
 var context = require('./context.js'),
-	uuid = require('uuid'),
-	bcrypt = require('bcrypt'),
-	sha1 = require('sha1'),
+	path = require('path'),
+	fs = require('fs'),
+	jwt = require('jsonwebtoken'),
+	bcrypt = require('bcryptjs'),
 	moment = require('moment'),
 	db = context.getService('db');
+
+var jwt_secret = JSON.parse(fs.readFileSync(path.join(__dirname,  "../") + "secrets.json"))["jwt_secret"];
 
 var auth = {
 
@@ -27,22 +30,17 @@ var auth = {
 				passHash = passHash.replace(/^\$2y\$/i, '$2a$');
 				bcrypt.compare(password, passHash, function (err, result) {
 					if (result) {
-						// Successful authentication
-						var accessToken = uuid.v1();
-						
-						var tokenHash = sha1(accessToken),
-							expiration = moment().add(7, 'days') // store token for a week
-								.format("YYYY-MM-DD HH:mm:ss"); // format to MYSQL datetime format
 
-						// Save access token
-						db.query(`INSERT INTO tokens (token_hash, expiration, username) VALUES 
-							('${tokenHash}','${expiration}','${username}')`, function (error, results) {
-								if (error) {
-									res.status(401).send('Token generation failed');
-								} else {
-									res.json({accessToken: accessToken});
-								}
-							});
+						var accessToken = jwt.sign({
+							username: username
+						}, jwt_secret, {
+							expiresIn: '7d'
+						});
+
+						res.json({
+							accessToken: accessToken
+						});
+
 					} else {
 						// either invalid username or password
 						res.status(401).send('Invalid username or password');
@@ -53,8 +51,22 @@ var auth = {
 	},
 
 	validateRequest: function (req, res, next) {
-		console.log("Validated request");
-		next();
+		// Need to check the validity of access token
+		var accessToken = req.query.accessToken;
+
+		try {
+			var decoded = jwt.verify(accessToken, jwt_secret);
+			console.log("Validated request", decoded);
+			console.log(decoded);
+      // At this point, the request is validated to the extent that the
+      // token is valid and not expired, and req.username is the username
+      // of the user initiating the request
+      req.username = decoded.username;
+			next();
+		} catch(err) {
+			console.log(err);
+			res.status(401).send('Invalid or expired token: ' + accessToken);
+		}
 	}
 }
 
