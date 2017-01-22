@@ -1,4 +1,3 @@
 node_modules/
-app/db/config.js
 .vscode
-.secrets.json
+/config.js

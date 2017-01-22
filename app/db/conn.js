@@ -1,8 +1,9 @@
-var allDBConfig = require('./config'),
-	anyDB = require('any-db');
+var anyDB = require('any-db');
 
-function getDBConnection (dbType) {
-	var dbConfig = allDBConfig[dbType],
+function getDBConnection (context) {
+	var envConfig = context.envConfig;
+
+	var dbConfig = envConfig['db'],
 		driver = dbConfig.driver,
 		username = dbConfig.username,
 		password = dbConfig.password,

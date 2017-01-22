@@ -4,9 +4,10 @@ var context = require('./context.js'),
 	jwt = require('jsonwebtoken'),
 	bcrypt = require('bcryptjs'),
 	moment = require('moment'),
-	db = context.getService('db');
+	db = context.getService('db'),
+	envConfig = context.envConfig;
 
-var jwt_secret = JSON.parse(fs.readFileSync(path.join(__dirname,  "../") + "secrets.json"))["jwt_secret"];
+var jwt_secret = envConfig['jwt_secret'];
 
 var auth = {
 
