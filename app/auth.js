@@ -21,19 +21,21 @@ var auth = {
 		// Verify the username/password
 		// Hash password
 		// Obtain hashed password from database
-		db.query(`SELECT pass_hash FROM users WHERE username='${username}'`, function (error, results) {
+		db.query(`SELECT userid, pass_hash FROM users WHERE username='${username}'`, function (error, results) {
 
 			if (error) {
 				res.status(401).send('Login failed');
 			} else {
-				var passHash = results && results.rows && results.rows[0] && results.rows[0]['pass_hash'] || '';
+				var passHash = results && results.rows && results.rows[0] && results.rows[0]['pass_hash'] || '',
+						userid = results && results.rows && results.rows[0] && results.rows[0]['userid'];
+
 				// Replace $2y$ with $2a$ due to differences in php hash method
 				passHash = passHash.replace(/^\$2y\$/i, '$2a$');
 				bcrypt.compare(password, passHash, function (err, result) {
 					if (result) {
 
 						var accessToken = jwt.sign({
-							username: username
+							userid: userid
 						}, jwt_secret, {
 							expiresIn: '7d'
 						});
@@ -53,7 +55,7 @@ var auth = {
 
 	validateRequest: function (req, res, next) {
 		// Need to check the validity of access token
-		var accessToken = req.query.accessToken;
+		var accessToken = req.headers['authorization'].split(" ")[1];
 
 		try {
 			var decoded = jwt.verify(accessToken, jwt_secret);
@@ -62,7 +64,7 @@ var auth = {
       // At this point, the request is validated to the extent that the
       // token is valid and not expired, and req.username is the username
       // of the user initiating the request
-      req.username = decoded.username;
+      req.userid = decoded.userid;
 			next();
 		} catch(err) {
 			console.log(err);
