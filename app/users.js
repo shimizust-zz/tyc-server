@@ -112,8 +112,6 @@ users = {
 		if (tokenUserId !== requestedUserId) {
 			res.status(400).send('Cannot set data for user that does not match access token');
 		} else {
-			// Can set the following data during post:
-			var body = req.body;
 			// For each property that we allow setting, we see if the body has it
 			var allowedProperties = availableUserProperties['user']['POST'];
 
@@ -151,11 +149,98 @@ users = {
 					});
 				}
 				transaction.commit();
+
+				res.json({
+					success: true
+				});
 			});
 
-			res.json({
-				success: true
+			
+		}
+	},
+
+	addNewWorkout: function (req, res) {
+		var tokenUserId = req.userid,
+			requestedUserId = parseInt(req.params.userId);
+
+		// Client will post data in the following format to: /api/v1/users/:userId/workouts
+		/*
+			{
+				'gymid': 2,
+				'date': '02-11-2017',
+				'boulderGradingSystem': 'hueco',
+				'routeGradingSystem': 'yds',
+				'climbData': {
+					'boulder': {
+						'VO': {
+							'project': 2,
+							'redpoint': 3,
+							'flash': 0,
+							'onsight': 1
+						},
+						'V2': {
+							'redpoint': 3
+						}
+					},
+					'toprope': {
+						'5.10a': {
+							'project': 3
+						},
+						'5.11c': {
+							'redpoint': 2
+						},
+						'5.12a': {}
+					},
+					'lead': {}
+				},
+				'notes': {
+					'boulder': 'blahblah',
+					'toprope': 'blahblah',
+					'lead': 'blahblah',
+					'other': 'jweoijfew'
+				} 
+			}
+		
+		Server returns points if successful
+		*/
+		if (tokenUserId !== requestedUserId) {
+			res.status(400).send('Cannot set data for user that does not match access token');
+		} else {
+			var data = req.body,
+				notes = data.notes || {},
+				insertedWorkoutRow = null;
+
+			var workoutsTableDataToSet = {
+				'workouts.userid': tokenUserId,
+				'workouts.date_workout': data.date,
+				'workouts.gymid': data.gymid,
+				'workouts.boulder_notes': notes['boulder'] || '',
+				'workouts.tr_notes': notes['toprope'] || '',
+				'workouts.lead_notes': notes['lead'] || '',
+				'workouts.other_notes': notes['other'] || ''
+			}
+
+			var workoutSegmentsTableDataArray = [];
+
+			
+
+			begin(db, function(err, transaction) {
+				
+				var workoutsQuery = squel.insert().into("workouts").setFields(workoutsTableDataToSet).toParam();
+				transaction.query(workoutsQuery.text, workoutsQuery.values, function(err, result) {
+					console.log(err);
+					console.log("result:", result);
+					if (result) {
+						insertedWorkoutRow = result.lastInsertId;
+					}
+				});
+				transaction.commit();
+
+				res.json({
+					success: true
+				});
 			});
+
 		}
 	},
 

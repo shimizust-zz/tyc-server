@@ -20,7 +20,7 @@ router.get('/api/v1/users/:userId', users.getUserInfo);
 // router.post('/api/v1/users/:userId/prefs', users.setUserPrefs);
 // router.get('/api/v1/users/:userId/prefs', users.getUserPrefs);
 
-// router.post('/api/v1/users/:userId/workouts', users.addNewWorkout);
+router.post('/api/v1/users/:userId/workouts', users.addNewWorkout);
 // router.get('/api/v1/users/:userId/workouts', users.getUserPastWorkouts);
 // router.get('/api/v1/users/:userId/workouts/:workoutId', users.getUserPastWorkout);
 // router.post('/api/v1/users/:userId/workouts/:workoutId', users.editPastWorkout);
