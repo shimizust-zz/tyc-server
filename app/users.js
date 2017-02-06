@@ -1,5 +1,6 @@
 var context = require('./context.js'),
 	db = context.getService('db'),
+	converter = context.getService('converter'),
 	begin = require('any-db-transaction'),
 	_ = require('underscore'),
 	squel = require('squel');
@@ -207,9 +208,11 @@ users = {
 			res.status(400).send('Cannot set data for user that does not match access token');
 		} else {
 			var data = req.body,
+				boulderGradingSystem = data.boulderGradingSystem,
+				routeGradingSystem = data.routeGradingSystem,
 				notes = data.notes || {},
 				insertedWorkoutRow = null;
-
+			
 			var workoutsTableDataToSet = {
 				'workouts.userid': tokenUserId,
 				'workouts.date_workout': data.date,
@@ -220,8 +223,32 @@ users = {
 				'workouts.other_notes': notes['other'] || ''
 			}
 
+			var climbTypes = ['boulder', 'toprope', 'lead'],
+				ascentTypes = ['project', 'redpoint', 'flash', 'onsight'];
+
+			var boulderGradingSystemIndex = converter.boulderGradingSystems.indexOf(boulderGradingSystem),
+				routeGradingSystemIndex = converter.routeGradingSystems.indexOf(routeGradingSystem);
+			
+			// Return error if no valid grading system passed
+			if (boulderGradingSystemIndex < 0) {
+				res.status(400).send('Invalid boulderGradingSystem property:' + boulderGradingSystem);
+				next();
+			}
+			if (routeGradingSystemIndex < 0) {
+				res.status(400).send('Invalid routeGradingSystem property:' + routeGradingSystem);
+				next();
+			}
+
+			var uniqueBoulderGrades = converter.uniqueBoulderGradesTable[boulderGradingSystemIndex],
+				uniqueRouteGrades = converter.uniqueRouteGradesTable[routeGradingSystemIndex],
+				boulderGradeToAbsoluteGradeTable = converter.boulderGradeToAbsoluteGradeTable[boulderGradingSystemIndex],
+				routeGradeToAbsoluteGradeTable = converter.routeGradeToAbsoluteGradeTable[routeGradingSystemIndex];
+
+			// Each workout segment needs to save:
+			// {workout_id, climb_type, ascent_type, grade_index (absolute), reps}
 			var workoutSegmentsTableDataArray = [];
 
+			
 			
 
 			begin(db, function(err, transaction) {
@@ -232,13 +259,64 @@ users = {
 					console.log("result:", result);
 					if (result) {
 						insertedWorkoutRow = result.lastInsertId;
+
+						// Compile the workoutSegmentsTableDataArray
+						climbTypes.forEach(function(climbType) {
+							var climbTypeData = data.climbData[climbType];
+							if (climbTypeData) {
+								// Iterate through all the unique grades for particular grading system
+								var uniqueGrades,
+									convertedToAbsoluteGradeTable;
+								if (climbType == 'boulder') {
+									uniqueGrades = uniqueBoulderGrades;
+									convertedToAbsoluteGradeTable = boulderGradeToAbsoluteGradeTable;
+								} else {
+									uniqueGrades = uniqueRouteGrades;
+									convertedToAbsoluteGradeTable = routeGradeToAbsoluteGradeTable;
+								}
+								uniqueGrades.forEach(function(uniqueGrade) {
+									// Check if there is an entry for this
+									var gradeData = climbTypeData[uniqueGrade];
+
+									if (gradeData) {
+										var absoluteGrade = convertedToAbsoluteGradeTable[uniqueGrade];
+
+										// Now, iterate through each ascent type
+										ascentTypes.forEach(function(ascentType) {
+											if (gradeData.hasOwnProperty(ascentType)) {
+												var reps = gradeData[ascentType];
+
+												workoutSegmentsTableDataArray.push({
+													'workout_id': insertedWorkoutRow, // use inserted workout id
+													'climb_type': climbType,
+													'ascent_type': ascentType,
+													'grade_index': absoluteGrade,
+													'reps': reps
+												});
+											}
+										});
+									}
+								});
+							}
+						});
+
+
+						workoutSegmentsTableDataArray.forEach(function(workoutSegment) {
+							var workoutSegmentsQuery = squel.insert().into("workout_segments").setFields(workoutSegment).toParam();
+							transaction.query(workoutSegmentsQuery.text, workoutSegmentsQuery.values, function(err, result) {
+								console.log(err);
+								console.log('workout segments result:', result);
+							});
+						});
+
+						transaction.commit();
+
+						res.json({
+							success: true
+						});
 					}
 				});
-				transaction.commit();
-
-				res.json({
-					success: true
-				});
+			
 			});
 
 		}

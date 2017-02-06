@@ -1,4 +1,5 @@
-var config = require('../config');
+var config = require('../config'),
+	converter = require('./common/converter');
 
 function Context() {
 	var self = this,
@@ -15,6 +16,7 @@ function Context() {
 
 		// Add to services
 		self.addService('db', dbConn);
+		self.addService('converter', converter);
 	};
 
 	this.addService = function (serviceName, service) {
