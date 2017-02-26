@@ -279,7 +279,6 @@ users = {
 									var reps = gradeData[ascentType];
 
 									workoutSegmentsTableDataArray.push({
-										// 'workout_id': insertedWorkoutRow, // use inserted workout id
 										'climb_type': climbType,
 										'ascent_type': ascentType,
 										'grade_index': absoluteGrade,
@@ -325,6 +324,7 @@ users = {
 						insertedWorkoutRow = result.lastInsertId;
 
 						workoutSegmentsTableDataArray.forEach(function(workoutSegment) {
+							// Add the inserted workout row id to each workout segment
 							workoutSegment.workout_id = insertedWorkoutRow;
 							var workoutSegmentsQuery = squel.insert().into("workout_segments").setFields(workoutSegment).toParam();
 							transaction.query(workoutSegmentsQuery.text, workoutSegmentsQuery.values, function(err, result) {

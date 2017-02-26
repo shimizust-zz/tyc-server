@@ -1,0 +1,5 @@
+--recursive
+--reporter spec
+--globals global,assert
+--require ./test/server-bootstrap.js
+--require ./test/test-bootstrap.js

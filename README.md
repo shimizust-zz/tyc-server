@@ -24,3 +24,6 @@
 2. Run `npm install` to install dependencies
 3. To start, navigate to app/ in terminal and run `node server.js`
 4. Use Postman to hit: http://localhost:8080/login using Basic Auth with username/password credentials that are in your database
+5. To run unit tests, run `npm test`.
+	a. Tests are located under the /test folder, with any .js files underneath being run.
+	b. Global test setup occurs in `test-bootstrap.js`

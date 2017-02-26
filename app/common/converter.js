@@ -69,7 +69,7 @@ function Converter() {
 	];
 
 
-	// Example: getAbsoluteGradeIndex('boulder', 'hueco', 'V3')
+	// Example: getAbsoluteGradeIndex('boulder', 'hueco', 'V3') -> 5
 	this.getAbsoluteGradeIndex = function(climbType, gradingSystem, nominalGrade) {
 		var gradingSystemsList,
 			convertedToAbsoluteGradeTable;
