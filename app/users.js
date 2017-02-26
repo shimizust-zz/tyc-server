@@ -1,5 +1,6 @@
 var context = require('./context.js'),
 	db = context.getService('db'),
+	dataUtils = context.getService('dataUtils'),
 	converter = context.getService('converter'),
 	begin = require('any-db-transaction'),
 	_ = require('underscore'),
@@ -167,14 +168,14 @@ users = {
 		// Client will post data in the following format to: /api/v1/users/:userId/workouts
 		/*
 			{
-				'gymid': 2,
+				'gymId': 2,
 				'date': '02-11-2017',
 				'boulderGradingSystem': 'hueco',
 				'routeGradingSystem': 'yds',
 				'climbData': {
 					'boulder': {
 						'VO': {
-							'project': 2,
+							'attempt': 2,
 							'redpoint': 3,
 							'flash': 0,
 							'onsight': 1
@@ -185,7 +186,7 @@ users = {
 					},
 					'toprope': {
 						'5.10a': {
-							'project': 3
+							'attempt': 3
 						},
 						'5.11c': {
 							'redpoint': 2
@@ -216,7 +217,10 @@ users = {
 			var workoutsTableDataToSet = {
 				'workouts.userid': tokenUserId,
 				'workouts.date_workout': data.date,
-				'workouts.gymid': data.gymid,
+				'workouts.gymid': data.gymId,
+				'workouts.boulder_points': 0,
+				'workouts.TR_points': 0,
+				'workouts.Lead_points': 0,
 				'workouts.boulder_notes': notes['boulder'] || '',
 				'workouts.tr_notes': notes['toprope'] || '',
 				'workouts.lead_notes': notes['lead'] || '',
@@ -224,7 +228,7 @@ users = {
 			}
 
 			var climbTypes = ['boulder', 'toprope', 'lead'],
-				ascentTypes = ['project', 'redpoint', 'flash', 'onsight'];
+				ascentTypes = ['attempt', 'redpoint', 'flash', 'onsight'];
 
 			var boulderGradingSystemIndex = converter.boulderGradingSystems.indexOf(boulderGradingSystem),
 				routeGradingSystemIndex = converter.routeGradingSystems.indexOf(routeGradingSystem);
@@ -248,7 +252,67 @@ users = {
 			// {workout_id, climb_type, ascent_type, grade_index (absolute), reps}
 			var workoutSegmentsTableDataArray = [];
 
+			// Compile the workoutSegmentsTableDataArray
+			climbTypes.forEach(function(climbType) {
+				var climbTypeData = data.climbData[climbType];
+				if (climbTypeData) {
+					// Iterate through all the unique grades for particular grading system
+					var uniqueGrades,
+						convertedToAbsoluteGradeTable;
+					if (climbType == 'boulder') {
+						uniqueGrades = uniqueBoulderGrades;
+						convertedToAbsoluteGradeTable = boulderGradeToAbsoluteGradeTable;
+					} else {
+						uniqueGrades = uniqueRouteGrades;
+						convertedToAbsoluteGradeTable = routeGradeToAbsoluteGradeTable;
+					}
+					uniqueGrades.forEach(function(uniqueGrade) {
+						// Check if there is an entry for this
+						var gradeData = climbTypeData[uniqueGrade];
+
+						if (gradeData) {
+							var absoluteGrade = convertedToAbsoluteGradeTable[uniqueGrade];
+
+							// Now, iterate through each ascent type
+							ascentTypes.forEach(function(ascentType) {
+								if (gradeData.hasOwnProperty(ascentType)) {
+									var reps = gradeData[ascentType];
+
+									workoutSegmentsTableDataArray.push({
+										// 'workout_id': insertedWorkoutRow, // use inserted workout id
+										'climb_type': climbType,
+										'ascent_type': ascentType,
+										'grade_index': absoluteGrade,
+										'reps': reps
+									});
+								}
+							});
+						}
+					});
+				}
+			});
+
+			// Now that workout segments are tabulated, calculate the workout points 
+			// and update the workout data table
+			var workoutPoints = {
+				'boulder': 0,
+				'toprope': 0,
+				'lead': 0
+			};
 			
+			workoutSegmentsTableDataArray.forEach(function(workoutSegment) {
+				var climbType = workoutSegment.climb_type,
+					ascentType = workoutSegment.ascent_type,
+					gradeIndex = workoutSegment.grade_index,
+					reps = workoutSegment.reps;
+
+				var currPoints = dataUtils.calcWorkoutSegmentPoints(climbType, ascentType, gradeIndex, reps);
+
+				workoutPoints[climbType] += currPoints;
+			});
+			workoutsTableDataToSet['workouts.boulder_points'] = workoutPoints['boulder'];
+			workoutsTableDataToSet['workouts.TR_points'] = workoutPoints['toprope'];
+			workoutsTableDataToSet['workouts.Lead_points'] = workoutPoints['lead'];
 			
 
 			begin(db, function(err, transaction) {
@@ -260,48 +324,8 @@ users = {
 					if (result) {
 						insertedWorkoutRow = result.lastInsertId;
 
-						// Compile the workoutSegmentsTableDataArray
-						climbTypes.forEach(function(climbType) {
-							var climbTypeData = data.climbData[climbType];
-							if (climbTypeData) {
-								// Iterate through all the unique grades for particular grading system
-								var uniqueGrades,
-									convertedToAbsoluteGradeTable;
-								if (climbType == 'boulder') {
-									uniqueGrades = uniqueBoulderGrades;
-									convertedToAbsoluteGradeTable = boulderGradeToAbsoluteGradeTable;
-								} else {
-									uniqueGrades = uniqueRouteGrades;
-									convertedToAbsoluteGradeTable = routeGradeToAbsoluteGradeTable;
-								}
-								uniqueGrades.forEach(function(uniqueGrade) {
-									// Check if there is an entry for this
-									var gradeData = climbTypeData[uniqueGrade];
-
-									if (gradeData) {
-										var absoluteGrade = convertedToAbsoluteGradeTable[uniqueGrade];
-
-										// Now, iterate through each ascent type
-										ascentTypes.forEach(function(ascentType) {
-											if (gradeData.hasOwnProperty(ascentType)) {
-												var reps = gradeData[ascentType];
-
-												workoutSegmentsTableDataArray.push({
-													'workout_id': insertedWorkoutRow, // use inserted workout id
-													'climb_type': climbType,
-													'ascent_type': ascentType,
-													'grade_index': absoluteGrade,
-													'reps': reps
-												});
-											}
-										});
-									}
-								});
-							}
-						});
-
-
 						workoutSegmentsTableDataArray.forEach(function(workoutSegment) {
+							workoutSegment.workout_id = insertedWorkoutRow;
 							var workoutSegmentsQuery = squel.insert().into("workout_segments").setFields(workoutSegment).toParam();
 							transaction.query(workoutSegmentsQuery.text, workoutSegmentsQuery.values, function(err, result) {
 								console.log(err);
@@ -312,7 +336,12 @@ users = {
 						transaction.commit();
 
 						res.json({
-							success: true
+							workoutId: insertedWorkoutRow,
+							points: {
+								boulder: workoutPoints['boulder'],
+								toprope: workoutPoints['toprope'],
+								lead: workoutPoints['lead']
+							}
 						});
 					}
 				});

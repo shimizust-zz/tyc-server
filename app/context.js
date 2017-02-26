@@ -1,4 +1,5 @@
 var config = require('../config'),
+	dataUtils = require('./common/dataUtils'),
 	converter = require('./common/converter');
 
 function Context() {
@@ -16,6 +17,7 @@ function Context() {
 
 		// Add to services
 		self.addService('db', dbConn);
+		self.addService('dataUtils', dataUtils);
 		self.addService('converter', converter);
 	};
 
